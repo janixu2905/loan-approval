@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="fintech">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loan Approval — Random Forest Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ========================================================
+     THEME DEFINITIONS
+     ======================================================== */
+
+  /* 1. Fintech Emerald (Modern SaaS default) */
+  :root[data-theme="fintech"] {
+    --bg-body: #f8fafc;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --card-bg: #ffffff;
+    --border-color: #e2e8f0;
+    --border-hover: #cbd5e1;
+    --accent: #059669;
+    --accent-dim: #ecfdf5;
+    --accent-border: #a7f3d0;
+    --danger: #e11d48;
+    --danger-dim: #fff1f2;
+    --danger-border: #fecdd3;
+    --bar-track: #f1f5f9;
+    --font-heading: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius: 12px;
+    --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  }
+
+  /* 2. Cyber Slate (Deep Dark Mode) */
+  :root[data-theme="cyber"] {
+    --bg-body: #0b0f19;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --card-bg: #111827;
+    --border-color: #1f2937;
+    --border-hover: #374151;
+    --accent: #10b981;
+    --accent-dim: rgba(16, 185, 129, 0.12);
+    --accent-border: rgba(16, 185, 129, 0.28);
+    --danger: #f43f5e;
+    --danger-dim: rgba(244, 63, 94, 0.12);
+    --danger-border: rgba(244, 63, 94, 0.28);
+    --bar-track: #1f2937;
+    --font-heading: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius: 12px;
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  }
+
+  /* 3. Editorial Warm (Parchment & Serif look) */
+  :root[data-theme="editorial"] {
+    --bg-body: #f7f5ee;
+    --text-primary: #19211c;
+    --text-secondary: #5f6b64;
+    --card-bg: #fdfcf9;
+    --border-color: #ded9cb;
+    --border-hover: #c4bdab;
+    --accent: #2d6a4f;
+    --accent-dim: #e8f3ed;
+    --accent-border: #b7ddcb;
+    --danger: #b8432a;
+    --danger-dim: #faeae6;
+    --danger-border: #f4cfc6;
+    --bar-track: #e9e5d9;
+    --font-heading: 'Newsreader', Georgia, serif;
+    --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius: 4px;
+    --card-shadow: none;
+  }
+
+  /* 4. Minimal Monochrome + Cobalt */
+  :root[data-theme="minimal"] {
+    --bg-body: #ffffff;
+    --text-primary: #09090b;
+    --text-secondary: #71717a;
+    --card-bg: #fafafa;
+    --border-color: #e4e4e7;
+    --border-hover: #a1a1aa;
+    --accent: #2563eb;
+    --accent-dim: #eff6ff;
+    --accent-border: #bfdbfe;
+    --danger: #ef4444;
+    --danger-dim: #fef2f2;
+    --danger-border: #fecaca;
+    --bar-track: #e4e4e7;
+    --font-heading: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius: 8px;
+    --card-shadow: none;
+  }
+
+  * { box-sizing: border-box; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
+  body {
+    margin: 0;
+    background: var(--bg-body);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 36px 24px 80px;
+  }
+
+  /* Top Control Toolbar */
+  .toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .theme-pill-group {
+    display: inline-flex;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    padding: 4px;
+    border-radius: 999px;
+    gap: 4px;
+    box-shadow: var(--card-shadow);
+  }
+  .theme-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: var(--font-body);
+    border-radius: 999px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .theme-btn:hover { color: var(--text-primary); }
+  .theme-btn.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid var(--accent-border);
+  }
+
+  /* Header */
+  header.hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 28px;
+    margin-bottom: 32px;
+  }
+  .hero-tag {
+    display: inline-block;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid var(--accent-border);
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .hero-title {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 8px;
+    max-width: 600px;
+  }
+  .hero-sub {
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    max-width: 580px;
+  }
+  .hero-score {
+    text-align: right;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    padding: 16px 24px;
+    border-radius: var(--radius);
+    box-shadow: var(--card-shadow);
+  }
+  .hero-score .num {
+    font-family: var(--font-mono);
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .hero-score .lbl {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin-top: 6px;
+  }
+
+  /* Stats Row */
+  .ledger {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .ledger-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    box-shadow: var(--card-shadow);
+  }
+  .ledger-card .v {
+    font-family: var(--font-mono);
+    font-size: 1.45rem;
+    font-weight: 600;
+  }
+  .ledger-card .k {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* Grid & Panels */
+  section { margin-bottom: 40px; }
+  h2.section-title {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  p.section-note {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin: 0 0 16px;
+  }
+
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 768px) {
+    .grid2 { grid-template-columns: 1fr; }
+    .ledger { grid-template-columns: repeat(2, 1fr); }
+    header.hero { flex-direction: column; }
+    .hero-score { text-align: left; width: 100%; }
+  }
+
+  .panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 22px;
+    box-shadow: var(--card-shadow);
+  }
+
+  /* Confusion Matrix */
+  .cm-grid {
+    display: grid;
+    grid-template-columns: 30px 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .cm-grid .hd {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 4px 0;
+  }
+  .cm-cell {
+    padding: 16px 12px;
+    text-align: center;
+    border-radius: calc(var(--radius) - 4px);
+    border: 1px solid transparent;
+  }
+  .cm-cell .n { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 700; }
+  .cm-cell .l { font-size: 0.7rem; color: var(--text-secondary); margin-top: 3px; }
+  .cm-correct { background: var(--accent-dim); border-color: var(--accent-border); }
+  .cm-correct .n { color: var(--accent); }
+  .cm-wrong { background: var(--danger-dim); border-color: var(--danger-border); }
+  .cm-wrong .n { color: var(--danger); }
+  .cm-rowlabel {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Feature Importance */
+  .fi-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 56px;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+    font-size: 0.82rem;
+  }
+  .fi-row .name {
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fi-bar-track {
+    background: var(--bar-track);
+    height: 7px;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .fi-bar-fill {
+    background: var(--accent);
+    height: 100%;
+    border-radius: 999px;
+  }
+  .fi-row .pct {
+    text-align: right;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+  }
+
+  /* Demographic Splits */
+  .split-row { margin-bottom: 14px; }
+  .split-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .split-label .rate { font-family: var(--font-mono); color: var(--text-secondary); }
+  .split-bar {
+    height: 10px;
+    display: flex;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--bar-track);
+  }
+  .split-bar .app { background: var(--accent); }
+  .split-bar .rej { background: var(--danger); }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 10px;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 9px; height: 9px; display: inline-block; border-radius: 2px; }
+
+  /* Chips & Footer */
+  .chip {
+    padding: 6px 12px;
+    background: var(--bar-track);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .chip-val {
+    font-family: var(--font-mono);
+    color: var(--danger);
+    font-weight: 600;
+  }
+
+  footer {
+    border-top: 1px solid var(--border-color);
+    padding-top: 20px;
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  code.mono {
+    font-family: var(--font-mono);
+    background: var(--accent-dim);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Interactive Theme Switcher Bar -->
+  <div class="toolbar">
+    <div class="theme-pill-group">
+      <button class="theme-btn active" onclick="setTheme('fintech')">Fintech Emerald</button>
+      <button class="theme-btn" onclick="setTheme('cyber')">Cyber Slate (Dark)</button>
+      <button class="theme-btn" onclick="setTheme('editorial')">Editorial Warm</button>
+      <button class="theme-btn" onclick="setTheme('minimal')">Minimal Clean</button>
+    </div>
+  </div>
+
+  <header class="hero">
+    <div>
+      <span class="hero-tag">Model Evaluation Run</span>
+      <h1 class="hero-title">Predicting loan approval with Random Forest</h1>
+      <div class="hero-sub">598 applications, 100 decision trees, and a held-out test split of 120. Diagnostic breakdown of model confidence and feature weights.</div>
+    </div>
+    <div class="hero-score">
+      <div class="num" id="acc-num">—</div>
+      <div class="lbl">Test Accuracy</div>
+    </div>
+  </header>
+
+  <div class="ledger">
+    <div class="ledger-card"><div class="v" id="stat-rows">—</div><div class="k">Applications In Dataset</div></div>
+    <div class="ledger-card"><div class="v" id="stat-train">—</div><div class="k">Used For Training</div></div>
+    <div class="ledger-card"><div class="v" id="stat-test">—</div><div class="k">Held Out For Test</div></div>
+    <div class="ledger-card"><div class="v" id="stat-auc">—</div><div class="k">ROC AUC Score</div></div>
+  </div>
+
+  <section>
+    <h2 class="section-title">Prediction Distribution</h2>
+    <p class="section-note">Comparison between ground truth labels and model predictions on the 120 test cases.</p>
+    <div class="grid2">
+      <div class="panel">
+        <div class="cm-grid" id="cm-grid"></div>
+        <div class="legend">
+          <span><i style="background:var(--accent);"></i>Correct Prediction</span>
+          <span><i style="background:var(--danger);"></i>Missed Call</span>
+        </div>
+      </div>
+      <div class="panel">
+        <div style="font-size:0.8rem; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:14px;">Classification Metrics</div>
+        <div id="report-rows"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Feature Importance Weights</h2>
+    <p class="section-note">Gini importance contribution of each input variable toward splitting tree branches.</p>
+    <div class="panel">
+      <div id="fi-list"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Baseline Approval Rates by Trait</h2>
+    <p class="section-note">Raw categorical distributions across the pre-training dataset.</p>
+    <div class="grid2">
+      <div class="panel">
+        <div id="split-credit"></div>
+      </div>
+      <div class="panel">
+        <div id="split-other"></div>
+      </div>
+    </div>
+    <div class="legend" style="margin-top:8px;">
+      <span><i style="background:var(--accent);"></i>Approved</span>
+      <span><i style="background:var(--danger);"></i>Not Approved</span>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Pre-training Missing Value Imputation</h2>
+    <p class="section-note">Columns requiring median (numeric) or mode (categorical) replacements.</p>
+    <div class="panel">
+      <div id="null-list" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Model: <code class="mono">RandomForestClassifier(n_estimators=100, random_state=42)</code></span>
+    <span>80 / 20 Train-Test Split</span>
+  </footer>
+
+</div>
+
+<script>
+// Theme Switcher Logic
+function setTheme(name) {
+  document.documentElement.setAttribute('data-theme', name);
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(name));
+  });
+  localStorage.setItem('dashboard_theme', name);
+}
+
+const savedTheme = localStorage.getItem('dashboard_theme');
+if (savedTheme) setTheme(savedTheme);
+
+// Data Binding
+const D = {"shape": [598, 13], "nulls_before": {"Loan_ID": 0, "Gender": 0, "Married": 0, "Dependents": 12, "Education": 0, "Self_Employed": 0, "ApplicantIncome": 0, "CoapplicantIncome": 0, "LoanAmount": 21, "Loan_Amount_Term": 14, "Credit_History": 49, "Property_Area": 0, "Loan_Status": 0}, "accuracy": 0.7916666666666666, "confusion_matrix": [[15, 20], [5, 80]], "report": {"Not Approved": {"precision": 0.75, "recall": 0.42857142857142855, "f1-score": 0.5454545454545454, "support": 35.0}, "Approved": {"precision": 0.8, "recall": 0.9411764705882353, "f1-score": 0.8648648648648649, "support": 85.0}, "accuracy": 0.7916666666666666, "macro avg": {"precision": 0.775, "recall": 0.6848739495798319, "f1-score": 0.7051597051597052, "support": 120.0}, "weighted avg": {"precision": 0.7854166666666667, "recall": 0.7916666666666666, "f1-score": 0.7717035217035217, "support": 120.0}}, "roc_auc": 0.774453781512605, "feature_importance": [["Credit_History", 0.2630942460619484], ["ApplicantIncome", 0.20711834303506443], ["LoanAmount", 0.18430849304259567], ["CoapplicantIncome", 0.11305273565356176], ["Dependents", 0.04775488889105057], ["Loan_Amount_Term", 0.041006458602991326], ["Property_Area_Semiurban", 0.027408398668025004], ["Married_Yes", 0.0255682476816319], ["Education_Not Graduate", 0.024884133267946345], ["Property_Area_Urban", 0.02418750768719382], ["Self_Employed_Yes", 0.023443910540132226], ["Gender_Male", 0.018172636867858402]], "approved_counts": {"Y": 411, "N": 187}, "prop_area": {"N": {"Rural": 67, "Semiurban": 52, "Urban": 68}, "Y": {"Rural": 108, "Semiurban": 173, "Urban": 130}}, "education": {"N": {"Graduate": 136, "Not Graduate": 51}, "Y": {"Graduate": 329, "Not Graduate": 82}}, "credit_hist": {"N": {"0.0": 79, "1.0": 95}, "Y": {"0.0": 7, "1.0": 368}}, "married": {"N": {"No": 78, "Yes": 109}, "Y": {"No": 132, "Yes": 279}}, "n_train": 478, "n_test": 120, "n_features": 12};
+
+document.getElementById('acc-num').textContent = (D.accuracy*100).toFixed(1) + '%';
+document.getElementById('stat-rows').textContent = D.shape[0];
+document.getElementById('stat-train').textContent = D.n_train;
+document.getElementById('stat-test').textContent = D.n_test;
+document.getElementById('stat-auc').textContent = D.roc_auc.toFixed(3);
+
+// Confusion Matrix
+const cm = D.confusion_matrix;
+const cmGrid = document.getElementById('cm-grid');
+cmGrid.innerHTML = `
+  <div class="hd"></div><div class="hd">Pred: Rejected</div><div class="hd">Pred: Approved</div>
+  <div class="cm-rowlabel">Actual: Rej</div>
+  <div class="cm-cell cm-correct"><div class="n">${cm[0][0]}</div><div class="l">True Negative</div></div>
+  <div class="cm-cell cm-wrong"><div class="n">${cm[0][1]}</div><div class="l">False Positive</div></div>
+  <div class="cm-rowlabel">Actual: App</div>
+  <div class="cm-cell cm-wrong"><div class="n">${cm[1][0]}</div><div class="l">False Negative</div></div>
+  <div class="cm-cell cm-correct"><div class="n">${cm[1][1]}</div><div class="l">True Positive</div></div>
+`;
+
+// Report Rows
+const reportRows = document.getElementById('report-rows');
+['Not Approved','Approved'].forEach(k => {
+  const r = D.report[k];
+  const row = document.createElement('div');
+  row.style.marginBottom = '14px';
+  row.innerHTML = `
+    <div style="display:flex; justify-content:space-between; font-size:0.84rem; font-weight:600; margin-bottom:4px;">
+      <span>${k}</span><span style="color:var(--text-secondary); font-family:var(--font-mono); font-size:0.75rem;">n=${r.support}</span>
+    </div>
+    <div style="display:flex; gap:16px; font-size:0.78rem; color:var(--text-secondary);">
+      <span>Precision <b style="color:var(--text-primary); font-family:var(--font-mono);">${(r.precision*100).toFixed(0)}%</b></span>
+      <span>Recall <b style="color:var(--text-primary); font-family:var(--font-mono);">${(r.recall*100).toFixed(0)}%</b></span>
+      <span>F1 <b style="color:var(--text-primary); font-family:var(--font-mono);">${(r['f1-score']*100).toFixed(0)}%</b></span>
+    </div>`;
+  reportRows.appendChild(row);
+});
+
+// Feature Importance
+const fiList = document.getElementById('fi-list');
+const maxFi = D.feature_importance[0][1];
+D.feature_importance.forEach(([name, val]) => {
+  const row = document.createElement('div');
+  row.className = 'fi-row';
+  const pct = (val/maxFi*100).toFixed(0);
+  row.innerHTML = `
+    <div class="name">${name.replace(/_/g,' ')}</div>
+    <div class="fi-bar-track"><div class="fi-bar-fill" style="width:${pct}%"></div></div>
+    <div class="pct">${(val*100).toFixed(1)}%</div>
+  `;
+  fiList.appendChild(row);
+});
+
+// Demographic Splits
+function rate(obj, key) {
+  const n = obj.N && obj.N[key] || 0;
+  const y = obj.Y && obj.Y[key] || 0;
+  const total = n + y;
+  return { n, y, total, pct: total ? (y/total*100) : 0 };
+}
+function renderSplit(container, title, obj, labelMap) {
+  const wrap = document.createElement('div');
+  wrap.className = 'split-row';
+  const t = document.createElement('div');
+  t.style.cssText = 'font-size:0.82rem; font-weight:600; margin-bottom:8px; color:var(--text-primary);';
+  t.textContent = title;
+  wrap.appendChild(t);
+  Object.keys(obj.Y || obj.N || {}).forEach(key => {
+    const r = rate(obj, key);
+    const row = document.createElement('div');
+    row.className = 'split-row';
+    const label = labelMap ? (labelMap[key] || key) : key;
+    row.innerHTML = `
+      <div class="split-label"><span>${label}</span><span class="rate">${r.pct.toFixed(0)}% (${r.total})</span></div>
+      <div class="split-bar"><div class="app" style="width:${r.pct}%"></div><div class="rej" style="width:${100-r.pct}%"></div></div>
+    `;
+    wrap.appendChild(row);
+  });
+  container.appendChild(wrap);
+}
+
+renderSplit(document.getElementById('split-credit'), 'By Credit History', D.credit_hist, {'1.0':'Credit History Verified', '0.0':'No Prior Credit'});
+const otherContainer = document.getElementById('split-other');
+renderSplit(otherContainer, 'By Property Area', D.prop_area);
+renderSplit(otherContainer, 'By Education', D.education, {'Graduate':'Graduate','Not Graduate':'Undergraduate'});
+
+// Missing Values
+const nullList = document.getElementById('null-list');
+Object.entries(D.nulls_before).filter(([k,v]) => v > 0).forEach(([k,v]) => {
+  const chip = document.createElement('div');
+  chip.className = 'chip';
+  chip.innerHTML = `<span>${k}</span><span class="chip-val">${v} null</span>`;
+  nullList.appendChild(chip);
+});
+</script>
+</body>
+</html>
